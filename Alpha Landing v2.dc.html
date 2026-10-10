@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<!-- PRELOADER Alpha: mostra a logo enchendo enquanto fotos, vídeo e fontes carregam -->
+<style>
+#alpha-loader{position:fixed;inset:0;z-index:9999;display:grid;place-items:center;background:#51260d;color:#fffaf5;font-family:Poppins,Arial,sans-serif;transition:opacity .45s,visibility .45s}
+#alpha-loader.is-done{opacity:0;visibility:hidden;pointer-events:none}
+#alpha-loader .al-center{width:220px;text-align:center}
+#alpha-loader .al-brand{width:180px;height:180px;display:block;margin:0 auto 44px}
+#alpha-loader .al-ghost{opacity:.13}
+#alpha-loader .al-reveal{clip-path:inset(100% 0 0)}
+#alpha-loader .al-track{height:1px;background:#8f5d3c;overflow:hidden}
+#alpha-loader .al-fill{height:100%;background:#fffaf5;transform:scaleX(0);transform-origin:left}
+#alpha-loader .al-status{display:flex;justify-content:space-between;align-items:center;margin-top:15px;color:#e8cdb9;font-size:12px;letter-spacing:.04em}
+#alpha-loader .al-percent{font-variant-numeric:tabular-nums}
+html.al-loading,html.al-loading body{overflow:hidden}
+@media (prefers-reduced-motion:reduce){#alpha-loader{transition:none}}
+</style>
+<div id="alpha-loader" role="status" aria-label="Carregando o site">
+  <svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden"><defs><g id="al-mark">
+    <path d="M703 235L715 236L452 781L407 782L359 770L602 241Z"/>
+    <path d="M790 337L829 377V598L792 631Z"/>
+    <path d="M772 341L774 644L736 670L737 467L736 461L712 444V375Z"/>
+    <path d="M529 363L455 400L398 442L347 499L325 534L305 577L288 645L287 678L293 715L305 743L319 762L345 783L366 793L423 804L464 803L524 793L606 767L705 715L806 641L879 571L917 524L952 463V460H946L910 465L992 397L991 523L969 489L925 576L856 668L775 747L675 819L604 860L493 911L408 941L285 974L318 895L276 873L247 847L234 829L219 795L211 753V708L217 668L232 618L254 570L279 529L312 487L351 449L403 411L436 393L491 371Z"/>
+    <path d="M670 428L720 466V682L671 711Z"/>
+    <path d="M652 446L653 721L623 735V472Z"/>
+    <path d="M845 456L891 492V533L846 583Z"/>
+    <path d="M894 652L1029 945L895 943L886 924L807 747L852 703Z"/>
+  </g></defs></svg>
+  <div class="al-center">
+    <svg class="al-brand" viewBox="185 210 870 790" aria-hidden="true" fill="currentColor">
+      <use class="al-ghost" href="#al-mark"/>
+      <use class="al-reveal" id="al-reveal" href="#al-mark"/>
+    </svg>
+    <div class="al-track"><div class="al-fill" id="al-fill"></div></div>
+    <div class="al-status"><span id="al-label">Carregando</span><span class="al-percent" id="al-percent" aria-hidden="true">0%</span></div>
+  </div>
+</div>
+<script>
+(function(){
+  // Arquivos que o preloader espera antes de mostrar o site (ficam no cache do navegador)
+  var IMAGES = ["./assets/fotos/cta-porta-entrada.jpg", "./assets/fotos/diferenciais-interior.jpg", "./assets/fotos/hero-sala-estar.jpg", "./assets/fotos/lancamento-1.jpg", "./assets/fotos/lancamento-2.jpg", "./assets/fotos/lancamento-3.jpg", "./assets/fotos/lancamento-4.jpg", "./assets/fotos/oferta-entrada-imovel.jpg", "./assets/fotos/servico-apartamento-pronto.jpg", "./assets/logo-alpha.png", "./assets/video/construcao-poster.jpg"];
+  var VIDEOS = ["./assets/video/construcao.mp4"];
+  var MIN_MS = 1400, MAX_MS = 10000;
+  var root = document.documentElement; root.classList.add('al-loading');
+  var loader = document.getElementById('alpha-loader'), reveal = document.getElementById('al-reveal'),
+      fill = document.getElementById('al-fill'), pct = document.getElementById('al-percent'), label = document.getElementById('al-label');
+  var reduced = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var total = IMAGES.length + VIDEOS.length + 2, done = 0, shown = 0, start = performance.now(), finished = false;
+  function tick1(){ done++; }
+  function once(fn){ var c = false; return function(){ if (!c) { c = true; fn(); } }; }
+  IMAGES.forEach(function(src){ var d = once(tick1), i = new Image(); i.onload = i.onerror = d; i.src = src; if (i.complete) d(); });
+  VIDEOS.forEach(function(src){ var d = once(tick1), v = document.createElement('video'); v.muted = true; v.preload = 'auto';
+    v.addEventListener('canplaythrough', d); v.addEventListener('error', d); v.src = src; v.load(); });
+  var fd = once(tick1); (document.fonts && document.fonts.ready ? document.fonts.ready : Promise.resolve()).then(fd, fd);
+  var wl = once(tick1); if (document.readyState === 'complete') wl(); else window.addEventListener('load', wl);
+  function finish(){
+    if (finished) return; finished = true;
+    label.textContent = 'Pronto';
+    setTimeout(function(){
+      loader.classList.add('is-done'); root.classList.remove('al-loading');
+      setTimeout(function(){ loader.remove(); }, 600);
+    }, reduced ? 100 : 400);
+  }
+  function frame(now){
+    var elapsed = now - start, minMs = reduced ? 300 : MIN_MS;
+    var target = Math.min(done / total, elapsed / minMs);
+    if (elapsed > MAX_MS) target = 1;
+    shown += (target - shown) * (reduced ? 1 : 0.12);
+    if (target >= 1 && shown > 0.995) shown = 1;
+    var p = Math.round(shown * 100);
+    reveal.style.clipPath = 'inset(' + (100 - p) + '% 0 0)';
+    fill.style.transform = 'scaleX(' + shown + ')';
+    pct.textContent = p + '%';
+    if (shown >= 1) { finish(); return; }
+    next();
+  }
+  // em aba oculta o navegador congela requestAnimationFrame; usa timer para não travar
+  function next(){ if (document.hidden) setTimeout(function(){ frame(performance.now()); }, 100); else requestAnimationFrame(frame); }
+  next();
+})();
+</script>
+<!-- /PRELOADER -->
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap">
+<script src="./image-slot.js"></script>
+<style>
+html{scroll-behavior:smooth}
+@media (prefers-reduced-motion: reduce){html{scroll-behavior:auto}}
+body{margin:0;background:#1a0f0a;font-family:Poppins,sans-serif;color:#2a1a12;-webkit-font-smoothing:antialiased;overflow-x:hidden}
+*{box-sizing:border-box}
+a{color:#e8742a;text-decoration:none}
+a:hover{color:#f39a4d}
+input,select,button{font-family:inherit}
+::selection{background:#e8742a;color:#fff}
+
+/* Carrossel – Lançamentos */
+.lanc-car{position:absolute;inset:0;overflow:hidden}
+.lanc-car img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;animation:lancFade 16s infinite}
+.lanc-car img:nth-of-type(2),.lanc-dots i:nth-child(2){animation-delay:4s}
+.lanc-car img:nth-of-type(3),.lanc-dots i:nth-child(3){animation-delay:8s}
+.lanc-car img:nth-of-type(4),.lanc-dots i:nth-child(4){animation-delay:12s}
+.lanc-dots{position:absolute;top:22px;right:18px;display:flex;gap:6px;z-index:2;pointer-events:none}
+.lanc-dots i{display:block;width:7px;height:7px;border-radius:999px;background:rgba(255,255,255,.45);animation:lancDot 16s infinite}
+article:hover .lanc-car img,article:hover .lanc-dots i{animation-play-state:paused}
+@keyframes lancFade{0%{opacity:0}4%{opacity:1}25%{opacity:1}29%{opacity:0}100%{opacity:0}}
+@keyframes lancDot{0%,27%{background:#e8742a;width:20px}29%,100%{background:rgba(255,255,255,.45);width:7px}}
+@media (prefers-reduced-motion: reduce){.lanc-car img{animation:none}.lanc-car img:first-of-type{opacity:1}.lanc-dots{display:none}}
+
+/* Vídeo – Construção */
+.constr-vid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+</style>
+</helmet>
+<div style="font-family:Poppins,sans-serif;overflow-x:hidden;position:relative">
+
+<header style="position:fixed;top:0;left:0;right:0;z-index:50;background:{{ headerBg }};backdrop-filter:{{ headerBlur }};-webkit-backdrop-filter:{{ headerBlur }};border-bottom:1px solid {{ headerBorder }};transition:background .35s, border-color .35s">
+  <div style="max-width:1320px;margin:0 auto;padding:16px clamp(20px,4vw,48px);display:flex;align-items:center;justify-content:space-between;gap:24px">
+    <a href="#topo" style="display:flex;align-items:center;gap:12px;color:#fff">
+      <img src="./assets/logo-alpha.png" alt="Imobiliária Alpha" style="width:42px;height:42px;border-radius:50%;display:block">
+      <span style="display:flex;flex-direction:column;line-height:1.1">
+        <span style="font-weight:600;font-size:15px;color:#fff;letter-spacing:.02em">Imobiliária Alpha</span>
+        <span style="font-weight:400;font-size:9px;letter-spacing:.42em;color:rgba(255,255,255,.6);margin-top:5px">RIO PRETO</span>
+      </span>
+    </a>
+    <sc-if value="{{ showNav }}" hint-placeholder-val="{{ true }}">
+      <nav style="display:flex;gap:38px;align-items:center">
+        <a href="#servicos" style="color:rgba(255,255,255,.78);font-size:13.5px;font-weight:400;letter-spacing:.02em" style-hover="color:#fff">Serviços</a>
+        <a href="#diferenciais" style="color:rgba(255,255,255,.78);font-size:13.5px;font-weight:400;letter-spacing:.02em" style-hover="color:#fff">Diferenciais</a>
+        <a href="#como-funciona" style="color:rgba(255,255,255,.78);font-size:13.5px;font-weight:400;letter-spacing:.02em" style-hover="color:#fff">Como funciona</a>
+        <a href="#duvidas" style="color:rgba(255,255,255,.78);font-size:13.5px;font-weight:400;letter-spacing:.02em" style-hover="color:#fff">Dúvidas</a>
+      </nav>
+      <a href="{{ waHeader }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:9px;background:#e8742a;color:#fff;padding:11px 20px;border-radius:999px;font-weight:500;font-size:13.5px;transition:background .2s" style-hover="background:#d4651e;color:#fff">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+        Fale conosco
+      </a>
+    </sc-if>
+    <sc-if value="{{ showNavMobile }}" hint-placeholder-val="{{ false }}">
+      <a href="{{ waHeader }}" target="_blank" rel="noopener" aria-label="Fale conosco no WhatsApp" style="width:44px;height:44px;border-radius:50%;background:#e8742a;color:#fff;display:flex;align-items:center;justify-content:center" style-hover="background:#d4651e;color:#fff">
+        <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+      </a>
+    </sc-if>
+  </div>
+</header>
+
+<section id="topo" data-screen-label="Hero" style="position:relative;min-height:100vh;background:#1a0f0a;color:#fff;display:flex;flex-direction:column;overflow:hidden">
+  <div style="position:absolute;inset:0">
+    <image-slot id="hero-bg" src="./assets/fotos/hero-sala-estar.jpg" shape="rect" placeholder="Foto: sala de estar sofisticada, madeira e luz quente"></image-slot>
+  </div>
+  <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg, rgba(26,15,10,.92) 0%, rgba(26,15,10,.7) 42%, rgba(26,15,10,.25) 100%), linear-gradient(0deg, rgba(26,15,10,.85) 0%, rgba(26,15,10,0) 35%)"></div>
+  <div style="position:relative;flex:1;width:100%;max-width:1320px;margin:0 auto;padding:140px clamp(20px,4vw,48px) 56px;display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 440px), 1fr));gap:clamp(40px,6vw,96px);align-items:end;pointer-events:none">
+    <div style="pointer-events:auto;max-width:640px">
+      <div data-reveal="1" style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:rgba(255,255,255,.7);margin-bottom:28px">SÃO JOSÉ DO RIO PRETO <span style="color:#e8742a;margin:0 6px">/</span> E REGIÃO</div>
+      <h1 data-reveal="1" style="margin:0;font-weight:500;font-size:clamp(38px,5.6vw,72px);line-height:1.04;letter-spacing:-.035em;text-wrap:balance">A chave do seu <span style="color:#f39a4d">novo lar</span> está mais perto do que você imagina.</h1>
+      <p data-reveal="1" style="margin:28px 0 0;font-size:16px;font-weight:300;line-height:1.75;color:rgba(255,255,255,.8);max-width:470px;text-wrap:pretty">Imóveis prontos, lançamentos e construção com assessoria completa e especializada — do primeiro contato até a entrega das chaves.</p>
+      <div data-reveal="1" style="display:flex;flex-wrap:wrap;align-items:center;gap:14px 28px;margin-top:40px">
+        <a href="{{ waHero }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:10px;background:#e8742a;color:#fff;padding:16px 28px;border-radius:999px;font-weight:500;font-size:15px;transition:background .2s" style-hover="background:#d4651e;color:#fff">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+          Quero meu imóvel
+        </a>
+        <a href="#servicos" style="display:inline-flex;align-items:center;gap:14px;color:#fff;font-weight:400;font-size:15px" style-hover="color:#f39a4d">
+          <span style="width:46px;height:46px;border-radius:50%;border:1px solid rgba(255,255,255,.6);display:flex;align-items:center;justify-content:center"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg></span>
+          Conhecer a Alpha
+        </a>
+      </div>
+    </div>
+
+    <form onSubmit="{{ submitLead }}" data-reveal="1" style="pointer-events:auto;background:#f6efe8;color:#2a1a12;border-radius:4px;padding:clamp(26px,3vw,36px);width:100%;max-width:420px;justify-self:end;display:flex;flex-direction:column;gap:14px">
+      <div style="padding-bottom:16px;border-bottom:1px solid #e9ddd0;margin-bottom:4px">
+        <div style="font-size:10.5px;font-weight:500;letter-spacing:.3em;color:#e8742a;margin-bottom:10px">ATENDIMENTO PELO WHATSAPP</div>
+        <h2 style="margin:0;font-size:22px;font-weight:500;letter-spacing:-.02em">Encontre seu imóvel ideal</h2>
+        <p style="margin:8px 0 0;font-size:13.5px;line-height:1.6;color:#7a6559">Conte o que você procura e um especialista Alpha te chama no WhatsApp.</p>
+      </div>
+      <input value="{{ fName }}" onChange="{{ onName }}" placeholder="Seu nome" aria-label="Seu nome" autocomplete="name" style="height:48px;border:0;border-bottom:1px solid #d9c8b8;background:transparent;padding:0 2px;font-size:15px;color:#2a1a12;outline:none" style-focus="border-bottom-color:#e8742a">
+      <input value="{{ fPhone }}" onChange="{{ onPhone }}" placeholder="WhatsApp (17) 99999-9999" aria-label="WhatsApp" inputmode="numeric" autocomplete="tel" style="height:48px;border:0;border-bottom:1px solid #d9c8b8;background:transparent;padding:0 2px;font-size:15px;color:#2a1a12;outline:none" style-focus="border-bottom-color:#e8742a">
+      <select value="{{ fType }}" onChange="{{ onType }}" aria-label="O que você procura?" style="height:48px;border:0;border-bottom:1px solid #d9c8b8;background:transparent;padding:0;font-size:15px;color:#2a1a12;outline:none" style-focus="border-bottom-color:#e8742a">
+        <option value="">O que você procura?</option>
+        <option>Apartamento na planta / lançamento</option>
+        <option>Apartamento pronto</option>
+        <option>Casa em condomínio</option>
+        <option>Terreno / construção</option>
+        <option>Quero investir</option>
+      </select>
+      <select value="{{ fBudget }}" onChange="{{ onBudget }}" aria-label="Faixa de investimento" style="height:48px;border:0;border-bottom:1px solid #d9c8b8;background:transparent;padding:0;font-size:15px;color:#2a1a12;outline:none" style-focus="border-bottom-color:#e8742a">
+        <option value="">Faixa de investimento</option>
+        <option>Até R$ 300 mil</option>
+        <option>R$ 300 mil a R$ 600 mil</option>
+        <option>R$ 600 mil a R$ 1 milhão</option>
+        <option>Acima de R$ 1 milhão</option>
+      </select>
+      <sc-if value="{{ formError }}" hint-placeholder-val="{{ false }}">
+        <div style="font-size:13px;color:#b5481a">{{ formError }}</div>
+      </sc-if>
+      <button type="submit" style="height:52px;border:0;border-radius:999px;background:#1a0f0a;color:#fff;font-size:15px;font-weight:500;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-top:10px;transition:background .2s" style-hover="background:#e8742a">
+        Receber opções agora
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"></path></svg>
+      </button>
+      <p style="margin:0;text-align:center;font-size:12px;color:#7a6559">Seus dados ficam só entre você e a Alpha.</p>
+    </form>
+  </div>
+  <div style="position:relative;border-top:1px solid rgba(255,255,255,.14);pointer-events:none">
+    <div style="max-width:1320px;margin:0 auto;padding:0 clamp(20px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 220px), 1fr))">
+      <div style="padding:22px 0;display:flex;align-items:center;gap:14px;font-size:13.5px;color:rgba(255,255,255,.85)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8742a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Atendimento personalizado</div>
+      <div style="padding:22px 0;display:flex;align-items:center;gap:14px;font-size:13.5px;color:rgba(255,255,255,.85)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8742a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Lançamentos exclusivos</div>
+      <div style="padding:22px 0;display:flex;align-items:center;gap:14px;font-size:13.5px;color:rgba(255,255,255,.85)"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e8742a" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"></path></svg>Apoio no financiamento</div>
+    </div>
+  </div>
+</section>
+
+<sc-if value="{{ showMarquee }}" hint-placeholder-val="{{ true }}">
+<div style="background:#e8742a;color:#fff;overflow:hidden;padding:14px 0;position:relative;z-index:2">
+  <div ref="{{ marqueeRef }}" style="display:flex;width:max-content;will-change:transform">
+    <div style="display:flex;align-items:center;gap:34px;padding-right:34px;font-weight:500;font-size:12.5px;letter-spacing:.3em;white-space:nowrap">
+      <span>IMÓVEIS PRONTOS</span><span>✦</span><span>LANÇAMENTOS</span><span>✦</span><span>CONSTRUÇÃO</span><span>✦</span><span>ASSESSORIA COMPLETA</span><span>✦</span><span>FINANCIAMENTO FACILITADO</span><span>✦</span><span>RIO PRETO E REGIÃO</span><span>✦</span>
+    </div>
+    <div aria-hidden="true" style="display:flex;align-items:center;gap:34px;padding-right:34px;font-weight:500;font-size:12.5px;letter-spacing:.3em;white-space:nowrap">
+      <span>IMÓVEIS PRONTOS</span><span>✦</span><span>LANÇAMENTOS</span><span>✦</span><span>CONSTRUÇÃO</span><span>✦</span><span>ASSESSORIA COMPLETA</span><span>✦</span><span>FINANCIAMENTO FACILITADO</span><span>✦</span><span>RIO PRETO E REGIÃO</span><span>✦</span>
+    </div>
+  </div>
+</div>
+</sc-if>
+
+<section id="servicos" data-screen-label="Serviços" style="background:#f6efe8;padding:clamp(72px,9vw,120px) 0">
+  <div style="max-width:1320px;margin:0 auto;padding:0 clamp(20px,4vw,48px)">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr));gap:24px clamp(40px,6vw,96px);align-items:end;padding-bottom:40px;border-bottom:1px solid #e9ddd0;margin-bottom:40px">
+      <div data-reveal="1">
+        <div style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:#e8742a;margin-bottom:20px">O QUE FAZEMOS</div>
+        <h2 style="margin:0;font-weight:500;font-size:clamp(30px,3.6vw,48px);line-height:1.08;letter-spacing:-.03em;text-wrap:balance">Tudo o que você precisa para morar ou investir bem.</h2>
+      </div>
+      <div data-reveal="1" style="display:flex;flex-direction:column;gap:22px;align-items:flex-start">
+        <p style="margin:0;font-size:15.5px;font-weight:300;line-height:1.8;color:#7a6559;max-width:440px;text-wrap:pretty">Seja o primeiro apartamento, a casa dos sonhos ou um investimento inteligente, a Alpha cuida de cada etapa ao seu lado.</p>
+        <a href="{{ waHero }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:14px;font-size:11.5px;font-weight:500;letter-spacing:.26em;color:#2a1a12" style-hover="color:#e8742a"><span style="width:36px;height:1px;background:currentColor;display:block"></span>FALAR COM UM CORRETOR</a>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 300px), 1fr));gap:clamp(20px,2vw,28px)">
+      <article data-reveal="1" style="display:flex;flex-direction:column;gap:20px">
+        <div style="position:relative;aspect-ratio:4/5;overflow:hidden;background:#e9ddd0">
+          <div style="position:absolute;inset:0;transition:transform 1s cubic-bezier(.2,.7,.2,1)" style-hover="transform:scale(1.06)"><image-slot id="svc-prontos" src="./assets/fotos/servico-apartamento-pronto.jpg" shape="rect" placeholder="Foto: apartamento pronto decorado"></image-slot></div>
+          <div style="position:absolute;top:18px;left:18px;background:#f6efe8;color:#2a1a12;font-size:11px;font-weight:500;letter-spacing:.2em;padding:7px 12px;pointer-events:none">01</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h3 style="margin:0;font-size:22px;font-weight:500;letter-spacing:-.02em">Imóveis prontos</h3>
+          <div style="font-size:10.5px;font-weight:500;letter-spacing:.24em;color:#a08a7c">MUDE JÁ</div>
+          <p style="margin:6px 0 0;font-size:14.5px;font-weight:300;line-height:1.75;color:#7a6559">Apartamentos e casas selecionados para você mudar já, com toda a documentação verificada.</p>
+        </div>
+      </article>
+      <article data-reveal="1" style="display:flex;flex-direction:column;gap:20px">
+        <div style="position:relative;aspect-ratio:4/5;overflow:hidden;background:#e9ddd0">
+          <div style="position:absolute;inset:0;transition:transform 1s cubic-bezier(.2,.7,.2,1)" style-hover="transform:scale(1.06)"><div class="lanc-car"><img src="./assets/fotos/lancamento-1.jpg" alt="Torres residenciais com varandas terracota"><img src="./assets/fotos/lancamento-2.jpg" alt="Torres residenciais em vista aérea de Rio Preto"><img src="./assets/fotos/lancamento-3.jpg" alt="Torre residencial com varandas amarelas"><img src="./assets/fotos/lancamento-4.jpg" alt="Torres residenciais gêmeas em tons escuros"><div class="lanc-dots"><i></i><i></i><i></i><i></i></div></div></div>
+          <div style="position:absolute;top:18px;left:18px;background:#f6efe8;color:#2a1a12;font-size:11px;font-weight:500;letter-spacing:.2em;padding:7px 12px;pointer-events:none">02</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h3 style="margin:0;font-size:22px;font-weight:500;letter-spacing:-.02em">Lançamentos</h3>
+          <div style="font-size:10.5px;font-weight:500;letter-spacing:.24em;color:#a08a7c">NA PLANTA</div>
+          <p style="margin:6px 0 0;font-size:14.5px;font-weight:300;line-height:1.75;color:#7a6559">Acesso aos melhores empreendimentos de Rio Preto na planta, com condições de entrada facilitadas.</p>
+        </div>
+      </article>
+      <article data-reveal="1" style="display:flex;flex-direction:column;gap:20px">
+        <div style="position:relative;aspect-ratio:4/5;overflow:hidden;background:#e9ddd0">
+          <div style="position:absolute;inset:0;transition:transform 1s cubic-bezier(.2,.7,.2,1)" style-hover="transform:scale(1.06)"><video ref="{{ videoRef }}" class="constr-vid" src="./assets/video/construcao.mp4" poster="./assets/video/construcao-poster.jpg" autoplay muted loop playsinline preload="auto" aria-label="Terreno vazio se transformando em uma casa moderna construída"></video></div>
+          <div style="position:absolute;top:18px;left:18px;background:#f6efe8;color:#2a1a12;font-size:11px;font-weight:500;letter-spacing:.2em;padding:7px 12px;pointer-events:none">03</div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:8px">
+          <h3 style="margin:0;font-size:22px;font-weight:500;letter-spacing:-.02em">Construção</h3>
+          <div style="font-size:10.5px;font-weight:500;letter-spacing:.24em;color:#a08a7c">DO TERRENO AO PROJETO</div>
+          <p style="margin:6px 0 0;font-size:14.5px;font-weight:300;line-height:1.75;color:#7a6559">Do terreno ao projeto: orientação para você construir com segurança e o melhor custo-benefício.</p>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="diferenciais" data-screen-label="Diferenciais" style="background:#1a0f0a;color:#fff;padding:clamp(72px,9vw,120px) 0">
+  <div style="max-width:1320px;margin:0 auto;padding:0 clamp(20px,4vw,48px)">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 340px), 1fr));gap:40px clamp(40px,5vw,80px);align-items:center">
+      <div data-reveal="1">
+        <div style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:#f39a4d;margin-bottom:20px">POR QUE A ALPHA</div>
+        <h2 style="margin:0;font-weight:500;font-size:clamp(30px,3.6vw,48px);line-height:1.08;letter-spacing:-.03em">Assessoria completa e especializada.</h2>
+        <p style="margin:26px 0 0;font-size:15.5px;font-weight:300;line-height:1.8;color:rgba(255,255,255,.68);max-width:440px;text-wrap:pretty">Mais do que vender imóveis, a gente ajuda você a tomar a melhor decisão: o bairro certo, o momento certo e a condição certa para o seu bolso.</p>
+      </div>
+      <div data-reveal="1" style="position:relative;aspect-ratio:4/5;max-height:620px;width:100%;overflow:hidden;background:#331d13">
+        <div style="position:absolute;inset:0"><image-slot id="dif-interior" src="./assets/fotos/diferenciais-interior.jpg" shape="rect" placeholder="Foto vertical: interior sofisticado"></image-slot></div>
+        <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(0deg, rgba(26,15,10,.9) 0%, rgba(26,15,10,0) 50%)"></div>
+        <blockquote style="position:absolute;left:clamp(22px,3vw,36px);right:clamp(22px,3vw,36px);bottom:clamp(22px,3vw,36px);margin:0;border-left:2px solid #e8742a;padding:2px 0 2px 20px;font-size:clamp(17px,1.6vw,21px);font-weight:400;line-height:1.5;letter-spacing:-.01em;pointer-events:none;text-wrap:pretty">“Cada chave entregue é uma história que a gente tem orgulho de fazer parte.”</blockquote>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 250px), 1fr));margin-top:clamp(56px,7vw,88px);border-top:1px solid rgba(255,255,255,.12)">
+      <div data-reveal="1" style="padding:36px 28px 8px 0;border-right:1px solid rgba(255,255,255,.08)">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#e8742a" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg>
+        <h3 style="margin:22px 0 10px;font-size:17px;font-weight:500">Quem conhece Rio Preto de verdade</h3>
+        <p style="margin:0;font-size:14px;font-weight:300;line-height:1.75;color:rgba(255,255,255,.62)">Análise de região, valorização e infraestrutura antes de qualquer indicação.</p>
+      </div>
+      <div data-reveal="1" style="padding:36px 28px 8px;border-right:1px solid rgba(255,255,255,.08)">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#e8742a" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"></rect><path d="M2 10h20"></path><path d="M6 15h4"></path></svg>
+        <h3 style="margin:22px 0 10px;font-size:17px;font-weight:500">Financiamento sem dor de cabeça</h3>
+        <p style="margin:0;font-size:14px;font-weight:300;line-height:1.75;color:rgba(255,255,255,.62)">Simulação, aprovação de crédito e uso do FGTS com acompanhamento de perto.</p>
+      </div>
+      <div data-reveal="1" style="padding:36px 28px 8px;border-right:1px solid rgba(255,255,255,.08)">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#e8742a" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg>
+        <h3 style="margin:22px 0 10px;font-size:17px;font-weight:500">Segurança jurídica</h3>
+        <p style="margin:0;font-size:14px;font-weight:300;line-height:1.75;color:rgba(255,255,255,.62)">Conferência de documentos e contratos para você comprar com tranquilidade.</p>
+      </div>
+      <div data-reveal="1" style="padding:36px 0 8px 28px">
+        <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="#e8742a" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+        <h3 style="margin:22px 0 10px;font-size:17px;font-weight:500">Atendimento humano</h3>
+        <p style="margin:0;font-size:14px;font-weight:300;line-height:1.75;color:rgba(255,255,255,.62)">Um corretor dedicado do início ao fim, sem empurrar imóvel que não combina com você.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="como-funciona" data-screen-label="Como funciona" style="background:#f6efe8;padding:clamp(72px,9vw,120px) 0">
+  <div style="max-width:1320px;margin:0 auto;padding:0 clamp(20px,4vw,48px)">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:flex-end;gap:24px;margin-bottom:56px">
+      <div data-reveal="1">
+        <div style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:#e8742a;margin-bottom:20px">COMO FUNCIONA</div>
+        <h2 style="margin:0;max-width:640px;font-weight:500;font-size:clamp(30px,3.6vw,48px);line-height:1.08;letter-spacing:-.03em;text-wrap:balance">Do primeiro ‘oi’ até a chave na mão.</h2>
+      </div>
+      <div data-reveal="1" style="font-size:11.5px;font-weight:500;letter-spacing:.26em;color:#a08a7c">4 ETAPAS</div>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 240px), 1fr));gap:0 32px">
+      <div data-reveal="1" onMouseEnter="{{ hs1 }}" onMouseLeave="{{ hsOff }}" style="padding:28px 0 12px;border-top:2px solid {{ step1Line }};transition:border-color .3s;cursor:default">
+        <div style="font-size:clamp(56px,6vw,84px);font-weight:300;line-height:1;letter-spacing:-.05em;color:{{ step1Color }};transition:color .3s">01</div>
+        <h3 style="margin:26px 0 10px;font-size:18px;font-weight:500">Conversa inicial</h3>
+        <p style="margin:0;font-size:14.5px;font-weight:300;line-height:1.75;color:#7a6559">Entendemos seu momento, objetivo e quanto você quer investir.</p>
+      </div>
+      <div data-reveal="1" onMouseEnter="{{ hs2 }}" onMouseLeave="{{ hsOff }}" style="padding:28px 0 12px;border-top:2px solid {{ step2Line }};transition:border-color .3s;cursor:default">
+        <div style="font-size:clamp(56px,6vw,84px);font-weight:300;line-height:1;letter-spacing:-.05em;color:{{ step2Color }};transition:color .3s">02</div>
+        <h3 style="margin:26px 0 10px;font-size:18px;font-weight:500">Seleção sob medida</h3>
+        <p style="margin:0;font-size:14.5px;font-weight:300;line-height:1.75;color:#7a6559">Apresentamos apenas imóveis que realmente fazem sentido para você.</p>
+      </div>
+      <div data-reveal="1" onMouseEnter="{{ hs3 }}" onMouseLeave="{{ hsOff }}" style="padding:28px 0 12px;border-top:2px solid {{ step3Line }};transition:border-color .3s;cursor:default">
+        <div style="font-size:clamp(56px,6vw,84px);font-weight:300;line-height:1;letter-spacing:-.05em;color:{{ step3Color }};transition:color .3s">03</div>
+        <h3 style="margin:26px 0 10px;font-size:18px;font-weight:500">Visitas e negociação</h3>
+        <p style="margin:0;font-size:14.5px;font-weight:300;line-height:1.75;color:#7a6559">Acompanhamos as visitas e negociamos as melhores condições.</p>
+      </div>
+      <div data-reveal="1" onMouseEnter="{{ hs4 }}" onMouseLeave="{{ hsOff }}" style="padding:28px 0 12px;border-top:2px solid {{ step4Line }};transition:border-color .3s;cursor:default">
+        <div style="font-size:clamp(56px,6vw,84px);font-weight:300;line-height:1;letter-spacing:-.05em;color:{{ step4Color }};transition:color .3s">04</div>
+        <h3 style="margin:26px 0 10px;font-size:18px;font-weight:500">Contrato e chaves</h3>
+        <p style="margin:0;font-size:14.5px;font-weight:300;line-height:1.75;color:#7a6559">Cuidamos da documentação e do financiamento até a entrega.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="Oferta" style="position:relative;background:#1a0f0a;color:#fff;overflow:hidden">
+  <div style="position:absolute;inset:0"><image-slot id="oferta-predio" src="./assets/fotos/oferta-entrada-imovel.jpg" shape="rect" placeholder="Foto: fachada de prédio moderno ao entardecer"></image-slot></div>
+  <div style="position:absolute;inset:0;pointer-events:none;background:linear-gradient(90deg, rgba(26,15,10,.95) 0%, rgba(26,15,10,.82) 55%, rgba(26,15,10,.5) 100%)"></div>
+  <div style="position:relative;max-width:1320px;margin:0 auto;padding:clamp(72px,9vw,120px) clamp(20px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr));gap:48px clamp(40px,6vw,96px);align-items:center;pointer-events:none">
+    <div data-reveal="1" style="pointer-events:auto">
+      <div style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:#f39a4d;margin-bottom:20px">CONDIÇÃO ESPECIAL</div>
+      <h2 style="margin:0;font-weight:500;font-size:clamp(30px,3.6vw,48px);line-height:1.08;letter-spacing:-.03em;text-wrap:balance">Sair do aluguel é mais fácil do que parece.</h2>
+      <p style="margin:24px 0 0;font-size:15.5px;font-weight:300;line-height:1.8;color:rgba(255,255,255,.75);max-width:480px;text-wrap:pretty">Temos lançamentos em Rio Preto com entrada facilitada e parcelas que cabem no seu bolso. Fale com a gente e descubra quanto você precisa para começar.</p>
+      <a href="{{ waOffer }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:10px;background:#e8742a;color:#fff;padding:16px 28px;border-radius:999px;font-weight:500;font-size:15px;margin-top:34px;transition:background .2s" style-hover="background:#d4651e;color:#fff">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+        Quero saber as condições
+      </a>
+    </div>
+    <div data-reveal="1" style="pointer-events:auto;justify-self:end;width:100%;max-width:420px;border-left:1px solid rgba(255,255,255,.25);padding:12px 0 12px clamp(28px,4vw,48px)">
+      <div style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:rgba(255,255,255,.7)">ATO A PARTIR DE</div>
+      <div style="font-size:clamp(60px,7.5vw,104px);font-weight:300;color:#f39a4d;letter-spacing:-.05em;line-height:1;margin:18px 0 16px">R$ 30 mil</div>
+      <div style="font-size:20px;font-weight:400">e a chave é sua.</div>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="Parceiros" style="background:#f6efe8;padding:clamp(64px,8vw,100px) 0">
+  <div style="max-width:1320px;margin:0 auto;padding:0 clamp(20px,4vw,48px)">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 380px), 1fr));gap:20px clamp(40px,6vw,96px);align-items:end;margin-bottom:44px">
+      <div data-reveal="1">
+        <div style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:#e8742a;margin-bottom:20px">PARCEIROS</div>
+        <h2 style="margin:0;font-weight:500;font-size:clamp(28px,3.2vw,42px);line-height:1.1;letter-spacing:-.03em;text-wrap:balance">Trabalhamos com quem constrói Rio Preto.</h2>
+      </div>
+      <p data-reveal="1" style="margin:0;font-size:15.5px;font-weight:300;line-height:1.8;color:#7a6559;max-width:420px">Empreendimentos das principais construtoras e incorporadoras da região.</p>
+    </div>
+    <div data-reveal="1" style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 180px), 1fr));border-top:1px solid #e9ddd0;border-bottom:1px solid #e9ddd0">
+      <div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:#4a2a1b;border-right:1px solid #e9ddd0;transition:color .25s" style-hover="color:#e8742a">Grupo Impper</div>
+      <div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:21px;font-weight:700;color:#4a2a1b;letter-spacing:.08em;border-right:1px solid #e9ddd0;transition:color .25s" style-hover="color:#e8742a">BILD</div>
+      <div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:500;color:#4a2a1b;letter-spacing:.02em;border-right:1px solid #e9ddd0;transition:color .25s" style-hover="color:#e8742a">Tarraf</div>
+      <div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:19px;font-weight:400;color:#4a2a1b;letter-spacing:.18em;border-right:1px solid #e9ddd0;transition:color .25s" style-hover="color:#e8742a">UNICOS</div>
+      <div style="height:110px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:600;color:#4a2a1b;transition:color .25s" style-hover="color:#e8742a">Hugo Fabbri</div>
+    </div>
+  </div>
+</section>
+
+<section id="duvidas" data-screen-label="FAQ" style="background:#fff;padding:clamp(72px,9vw,120px) 0">
+  <div style="max-width:1320px;margin:0 auto;padding:0 clamp(20px,4vw,48px);display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 360px), 1fr));gap:48px clamp(40px,6vw,110px);align-items:start">
+    <div data-reveal="1">
+      <div style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:#e8742a;margin-bottom:20px">DÚVIDAS FREQUENTES</div>
+      <h2 style="margin:0;font-weight:500;font-size:clamp(30px,3.6vw,48px);line-height:1.08;letter-spacing:-.03em">Ficou alguma dúvida?</h2>
+      <p style="margin:24px 0 0;font-size:15.5px;font-weight:300;line-height:1.8;color:#7a6559;max-width:400px;text-wrap:pretty">Se a sua pergunta não estiver aqui, chama a gente no WhatsApp. Respondemos rapidinho.</p>
+      <a href="{{ waFaq }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:14px;margin-top:30px;font-size:11.5px;font-weight:500;letter-spacing:.26em;color:#2a1a12" style-hover="color:#e8742a"><span style="width:36px;height:1px;background:currentColor;display:block"></span>PERGUNTAR NO WHATSAPP</a>
+    </div>
+    <div style="border-top:1px solid #e9ddd0">
+      <div data-reveal="1" style="border-bottom:1px solid #e9ddd0">
+        <button onClick="{{ faq0 }}" aria-expanded="{{ faqOpen0 }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 0;background:none;border:0;cursor:pointer;text-align:left;font-size:17px;font-weight:500;color:#2a1a12">Posso usar meu FGTS na compra?<span style="flex:none;color:#e8742a;display:flex;transition:transform .3s;transform:{{ faqRot0 }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 4v16M4 12h16"></path></svg></span></button>
+        <div style="display:grid;grid-template-rows:{{ faqRows0 }};transition:grid-template-rows .35s ease"><div style="overflow:hidden"><p style="margin:0;padding:0 40px 26px 0;font-size:15px;font-weight:300;line-height:1.8;color:#7a6559">Sim. O FGTS pode ser usado na entrada ou para amortizar o financiamento, desde que você cumpra os requisitos. Nós fazemos essa análise com você.</p></div></div>
+      </div>
+      <div data-reveal="1" style="border-bottom:1px solid #e9ddd0">
+        <button onClick="{{ faq1 }}" aria-expanded="{{ faqOpen1 }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 0;background:none;border:0;cursor:pointer;text-align:left;font-size:17px;font-weight:500;color:#2a1a12">Vocês ajudam com o financiamento?<span style="flex:none;color:#e8742a;display:flex;transition:transform .3s;transform:{{ faqRot1 }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 4v16M4 12h16"></path></svg></span></button>
+        <div style="display:grid;grid-template-rows:{{ faqRows1 }};transition:grid-template-rows .35s ease"><div style="overflow:hidden"><p style="margin:0;padding:0 40px 26px 0;font-size:15px;font-weight:300;line-height:1.8;color:#7a6559">Ajudamos em tudo: simulação nos bancos, organização da documentação e acompanhamento até a aprovação do crédito.</p></div></div>
+      </div>
+      <div data-reveal="1" style="border-bottom:1px solid #e9ddd0">
+        <button onClick="{{ faq2 }}" aria-expanded="{{ faqOpen2 }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 0;background:none;border:0;cursor:pointer;text-align:left;font-size:17px;font-weight:500;color:#2a1a12">Vale mais a pena comprar na planta ou pronto?<span style="flex:none;color:#e8742a;display:flex;transition:transform .3s;transform:{{ faqRot2 }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 4v16M4 12h16"></path></svg></span></button>
+        <div style="display:grid;grid-template-rows:{{ faqRows2 }};transition:grid-template-rows .35s ease"><div style="overflow:hidden"><p style="margin:0;padding:0 40px 26px 0;font-size:15px;font-weight:300;line-height:1.8;color:#7a6559">Depende do seu objetivo e prazo. Na planta você costuma ter preço menor e entrada parcelada; o pronto permite mudar logo. Te ajudamos a comparar os dois cenários.</p></div></div>
+      </div>
+      <div data-reveal="1" style="border-bottom:1px solid #e9ddd0">
+        <button onClick="{{ faq3 }}" aria-expanded="{{ faqOpen3 }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 0;background:none;border:0;cursor:pointer;text-align:left;font-size:17px;font-weight:500;color:#2a1a12">Vocês atendem fora de São José do Rio Preto?<span style="flex:none;color:#e8742a;display:flex;transition:transform .3s;transform:{{ faqRot3 }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 4v16M4 12h16"></path></svg></span></button>
+        <div style="display:grid;grid-template-rows:{{ faqRows3 }};transition:grid-template-rows .35s ease"><div style="overflow:hidden"><p style="margin:0;padding:0 40px 26px 0;font-size:15px;font-weight:300;line-height:1.8;color:#7a6559">Sim, atendemos Rio Preto e cidades da região.</p></div></div>
+      </div>
+      <div data-reveal="1" style="border-bottom:1px solid #e9ddd0">
+        <button onClick="{{ faq4 }}" aria-expanded="{{ faqOpen4 }}" style="width:100%;display:flex;align-items:center;justify-content:space-between;gap:20px;padding:26px 0;background:none;border:0;cursor:pointer;text-align:left;font-size:17px;font-weight:500;color:#2a1a12">Quanto custa o atendimento da Alpha?<span style="flex:none;color:#e8742a;display:flex;transition:transform .3s;transform:{{ faqRot4 }}"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"><path d="M12 4v16M4 12h16"></path></svg></span></button>
+        <div style="display:grid;grid-template-rows:{{ faqRows4 }};transition:grid-template-rows .35s ease"><div style="overflow:hidden"><p style="margin:0;padding:0 40px 26px 0;font-size:15px;font-weight:300;line-height:1.8;color:#7a6559">Para quem está comprando, a nossa assessoria não tem custo extra.</p></div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section data-screen-label="CTA final" style="background:#24150e;color:#fff">
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 420px), 1fr))">
+    <div style="padding:clamp(72px,9vw,128px) clamp(20px,5vw,80px);display:flex;flex-direction:column;justify-content:center;max-width:720px;justify-self:end;width:100%">
+      <div data-reveal="1" style="font-size:11.5px;font-weight:500;letter-spacing:.32em;color:#f39a4d;margin-bottom:20px">VAMOS CONVERSAR?</div>
+      <h2 data-reveal="1" style="margin:0;font-weight:500;font-size:clamp(34px,4.6vw,60px);line-height:1.04;letter-spacing:-.035em;text-wrap:balance">Já chegou a sua hora de comprar?</h2>
+      <p data-reveal="1" style="margin:24px 0 0;font-size:16px;font-weight:300;line-height:1.8;color:rgba(255,255,255,.72);max-width:460px;text-wrap:pretty">Dê o primeiro passo hoje. Um especialista Alpha está pronto para te ouvir e encontrar o imóvel certo para você.</p>
+      <div data-reveal="1" style="margin-top:38px">
+        <a href="{{ waFinal }}" target="_blank" rel="noopener" style="display:inline-flex;align-items:center;gap:10px;background:#e8742a;color:#fff;padding:17px 30px;border-radius:999px;font-weight:500;font-size:15.5px;transition:background .2s" style-hover="background:#d4651e;color:#fff">
+          <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path></svg>
+          Falar com um especialista
+        </a>
+      </div>
+    </div>
+    <div style="position:relative;min-height:420px;background:#331d13">
+      <image-slot id="cta-chaves" src="./assets/fotos/cta-porta-entrada.jpg" shape="rect" placeholder="Foto: entrega de chaves / hall de entrada"></image-slot>
+    </div>
+  </div>
+</section>
+
+<footer style="background:#120a06;color:rgba(255,255,255,.6);padding:80px 0 32px;font-size:14px">
+  <div style="max-width:1320px;margin:0 auto;padding:0 clamp(20px,4vw,48px)">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(min(100%, 200px), 1fr));gap:44px">
+      <div style="max-width:300px">
+        <div style="display:flex;align-items:center;gap:12px">
+          <img src="./assets/logo-alpha.png" alt="Imobiliária Alpha" style="width:46px;height:46px;border-radius:50%;display:block">
+          <span style="display:flex;flex-direction:column;line-height:1.1"><span style="font-weight:600;font-size:15px;color:#fff;letter-spacing:.02em">Imobiliária Alpha</span><span style="font-weight:400;font-size:9px;letter-spacing:.42em;color:rgba(255,255,255,.55);margin-top:5px">RIO PRETO</span></span>
+        </div>
+        <p style="margin:22px 0 0;font-weight:300;line-height:1.8">Imóveis prontos, lançamentos e construção em São José do Rio Preto e região. Assessoria Completa e Especializada®.</p>
+      </div>
+      <div>
+        <div style="color:#fff;font-size:11px;font-weight:500;letter-spacing:.28em;margin-bottom:22px">NAVEGAÇÃO</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <a href="#servicos" style="color:rgba(255,255,255,.6)" style-hover="color:#f39a4d">Serviços</a>
+          <a href="#diferenciais" style="color:rgba(255,255,255,.6)" style-hover="color:#f39a4d">Diferenciais</a>
+          <a href="#como-funciona" style="color:rgba(255,255,255,.6)" style-hover="color:#f39a4d">Como funciona</a>
+          <a href="#duvidas" style="color:rgba(255,255,255,.6)" style-hover="color:#f39a4d">Dúvidas</a>
+        </div>
+      </div>
+      <div>
+        <div style="color:#fff;font-size:11px;font-weight:500;letter-spacing:.28em;margin-bottom:22px">CONTATO</div>
+        <div style="display:flex;flex-direction:column;gap:12px">
+          <a href="{{ waFooter }}" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6)" style-hover="color:#f39a4d">WhatsApp {{ phoneLabel }}</a>
+          <a href="https://instagram.com/imobiliariaalpharp" target="_blank" rel="noopener" style="color:rgba(255,255,255,.6)" style-hover="color:#f39a4d">@imobiliariaalpharp</a>
+          <span>São José do Rio Preto – SP</span>
+          <span>CRECI {{ creci }}</span>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:64px;padding-top:24px;border-top:1px solid rgba(255,255,255,.08);display:flex;flex-wrap:wrap;justify-content:space-between;gap:10px 24px;font-size:12.5px;color:rgba(255,255,255,.42)">
+      <span>© Imobiliária Alpha | Rio Preto. Todos os direitos reservados.</span>
+      <span>Imagens meramente ilustrativas.</span>
+    </div>
+  </div>
+</footer>
+
+<a href="{{ waFloat }}" target="_blank" rel="noopener" aria-label="Conversar no WhatsApp" style="position:fixed;right:clamp(16px,3vw,28px);bottom:clamp(16px,3vw,28px);z-index:60;width:60px;height:60px;border-radius:50%;background:#25d366;color:#fff;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 30px -8px rgba(0,0,0,.45);transition:transform .2s" style-hover="transform:scale(1.07);color:#fff">
+  <span ref="{{ pulseRef }}" style="position:absolute;inset:0;border-radius:50%;background:#25d366;pointer-events:none"></span>
+  <svg style="position:relative" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7.9 20A9 9 0 1 0 4 16.1L2 22Z"></path><path d="M9.5 9.5c.3 1.6 1.5 3.4 3.4 4.4l1.1-1 1.9.8-.4 1.6c-3.4 0-6.9-3-7.1-6.6l1.6-.5.8 1.9z" fill="currentColor" stroke="none"></path></svg>
+</a>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;whatsapp&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;5517999999999&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Contato&quot;},&quot;creci&quot;:{&quot;editor&quot;:&quot;text&quot;,&quot;default&quot;:&quot;xxxxx-J&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Contato&quot;},&quot;showMarquee&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Layout&quot;}}">
+class Component extends DCLogic {
+  state = { scrolled: false, w: typeof window !== 'undefined' ? window.innerWidth : 1280, open: 0, hover: 0, name: '', phone: '', type: '', budget: '', error: '' };
+  marqueeRef = React.createRef();
+  pulseRef = React.createRef();
+  videoRef = React.createRef();
+  componentDidMount() {
+    this.onScroll = () => { const s = window.scrollY > 40; if (s !== this.state.scrolled) this.setState({ scrolled: s }); };
+    this.onResize = () => this.setState({ w: window.innerWidth });
+    window.addEventListener('scroll', this.onScroll, { passive: true });
+    window.addEventListener('resize', this.onResize);
+    this.onScroll();
+    this.reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    this.startAnims();
+    setTimeout(() => this.setupReveal(), 60);
+  }
+  componentDidUpdate() { this.startAnims(); }
+  componentWillUnmount() {
+    window.removeEventListener('scroll', this.onScroll);
+    window.removeEventListener('resize', this.onResize);
+    this.io && this.io.disconnect();
+  }
+  setupVideo() {
+    const v = this.videoRef.current;
+    if (!v || v === this._v) return;
+    this._v = v;
+    v.muted = true; v.defaultMuted = true; v.loop = true; v.playsInline = true;
+    v.setAttribute('muted', ''); v.setAttribute('playsinline', '');
+    if (this.reduced) { v.pause(); v.addEventListener('loadedmetadata', () => { v.currentTime = Math.max(0, v.duration - 0.1); }, { once: true }); return; }
+    const tryPlay = () => { const p = v.play(); if (p && p.catch) p.catch(() => {}); };
+    tryPlay();
+    v.addEventListener('canplay', tryPlay, { once: true });
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) tryPlay(); });
+  }
+  startAnims() {
+    this.setupVideo();
+    if (this.reduced) return;
+    const m = this.marqueeRef.current;
+    if (m && m !== this._m) { this._m = m; m.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-50%)' }], { duration: 40000, iterations: Infinity }); }
+    const p = this.pulseRef.current;
+    if (p && p !== this._p) { this._p = p; p.animate([{ transform: 'scale(1)', opacity: .55 }, { transform: 'scale(1.6)', opacity: 0 }], { duration: 1900, iterations: Infinity, easing: 'ease-out' }); }
+  }
+  setupReveal() {
+    if (this.reduced || !('IntersectionObserver' in window)) return;
+    const els = [...document.querySelectorAll('[data-reveal]')];
+    this.io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        const el = e.target; this.io.unobserve(el);
+        const sib = [...el.parentElement.children].filter(c => c.hasAttribute('data-reveal'));
+        const d = Math.max(0, sib.indexOf(el)) * 90;
+        el.animate([{ opacity: 0, translate: '0 24px' }, { opacity: 1, translate: '0 0' }], { duration: 900, delay: d, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' });
+        el.style.opacity = '';
+      });
+    }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+    els.forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (r.top < window.innerHeight * 0.95) {
+        el.animate([{ opacity: 0, translate: '0 18px' }, { opacity: 1, translate: '0 0' }], { duration: 1000, delay: 80 + els.indexOf(el) * 70, easing: 'cubic-bezier(.2,.7,.2,1)', fill: 'backwards' });
+        return;
+      }
+      el.style.opacity = '0';
+      this.io.observe(el);
+    });
+  }
+  phoneDigits() { return String(this.props.whatsapp ?? '5517999999999').replace(/\D/g, ''); }
+  wa(text) { return `https://wa.me/${this.phoneDigits()}?text=${encodeURIComponent(text)}`; }
+  mask(v) {
+    const d = v.replace(/\D/g, '').slice(0, 11);
+    if (d.length <= 2) return d.length ? `(${d}` : '';
+    if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+    if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`;
+    return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+  }
+  submit = e => {
+    e.preventDefault();
+    const { name, phone, type, budget } = this.state;
+    if (!name.trim()) return this.setState({ error: 'Conte pra gente seu nome.' });
+    if (phone.replace(/\D/g, '').length < 10) return this.setState({ error: 'Informe um WhatsApp válido com DDD.' });
+    this.setState({ error: '' });
+    const msg = `Olá, Alpha! Vim pelo site e quero receber opções de imóveis.\n\n*Nome:* ${name.trim()}\n*WhatsApp:* ${phone}\n*Procuro:* ${type || 'Ainda não sei'}\n*Faixa de investimento:* ${budget || 'A definir'}`;
+    window.open(this.wa(msg), '_blank');
+  };
+  renderVals() {
+    const s = this.state;
+    const mobile = s.w < 960;
+    const d = this.phoneDigits();
+    const local = d.startsWith('55') ? d.slice(2) : d;
+    const faq = {};
+    for (let i = 0; i < 5; i++) {
+      const o = s.open === i;
+      faq['faq' + i] = () => this.setState({ open: o ? -1 : i });
+      faq['faqOpen' + i] = o ? 'true' : 'false';
+      faq['faqRot' + i] = o ? 'rotate(45deg)' : 'rotate(0deg)';
+      faq['faqRows' + i] = o ? '1fr' : '0fr';
+    }
+    const on = i => s.hover === i;
+    return {
+      ...faq,
+      headerBg: s.scrolled ? 'rgba(26,15,10,.86)' : 'rgba(26,15,10,0)',
+      headerBlur: s.scrolled ? 'blur(14px)' : 'none',
+      headerBorder: s.scrolled ? 'rgba(255,255,255,.07)' : 'rgba(255,255,255,.1)',
+      showNav: !mobile, showNavMobile: mobile,
+      showMarquee: this.props.showMarquee ?? true,
+      marqueeRef: this.marqueeRef, pulseRef: this.pulseRef, videoRef: this.videoRef,
+      creci: this.props.creci ?? 'xxxxx-J',
+      phoneLabel: this.mask(local),
+      waHeader: this.wa('Olá, Alpha! Vim pelo site e gostaria de falar com um corretor.'),
+      waHero: this.wa('Olá, Alpha! Quero encontrar meu imóvel. Podem me ajudar?'),
+      waOffer: this.wa('Olá, Alpha! Quero saber as condições dos lançamentos com ato a partir de R$ 30 mil.'),
+      waFaq: this.wa('Olá, Alpha! Tenho uma dúvida sobre compra de imóvel.'),
+      waFinal: this.wa('Olá, Alpha! Acho que chegou a minha hora de comprar. Quero falar com um especialista.'),
+      waFooter: this.wa('Olá, Alpha! Vim pelo site e gostaria de mais informações.'),
+      waFloat: this.wa('Olá, Alpha! Vim pelo site e gostaria de atendimento.'),
+      fName: s.name, fPhone: s.phone, fType: s.type, fBudget: s.budget, formError: s.error,
+      onName: e => this.setState({ name: e.target.value }),
+      onPhone: e => this.setState({ phone: this.mask(e.target.value) }),
+      onType: e => this.setState({ type: e.target.value }),
+      onBudget: e => this.setState({ budget: e.target.value }),
+      submitLead: this.submit,
+      hs1: () => this.setState({ hover: 1 }), hs2: () => this.setState({ hover: 2 }),
+      hs3: () => this.setState({ hover: 3 }), hs4: () => this.setState({ hover: 4 }),
+      hsOff: () => this.setState({ hover: 0 }),
+      step1Color: on(1) ? '#e8742a' : '#d9c8b8', step2Color: on(2) ? '#e8742a' : '#d9c8b8',
+      step3Color: on(3) ? '#e8742a' : '#d9c8b8', step4Color: on(4) ? '#e8742a' : '#d9c8b8',
+      step1Line: on(1) ? '#e8742a' : '#e9ddd0', step2Line: on(2) ? '#e8742a' : '#e9ddd0',
+      step3Line: on(3) ? '#e8742a' : '#e9ddd0', step4Line: on(4) ? '#e8742a' : '#e9ddd0',
+    };
+  }
+}
+</script>
+</body>
+</html>
